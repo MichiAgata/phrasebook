@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="英語フレーズ帳">
+<meta name="theme-color" content="#ffffff">
+<title>業務英語フレーズ帳</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;background:#f7f7f8;color:#1f2937;padding-bottom:40px}
+header{position:sticky;top:0;z-index:10;background:#fff;padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+h1{font-size:15px;font-weight:700}
+.meta{display:flex;justify-content:space-between;font-size:11px;color:#9ca3af;margin-top:3px}
+.bar{height:6px;background:#f1f2f4;border-radius:99px;margin-top:8px;overflow:hidden}
+.bar>div{height:100%;background:#34d399;border-radius:99px;transition:width .4s}
+.filters{display:flex;gap:8px;margin-top:10px}
+.filters button{flex:1;padding:8px 0;border:0;border-radius:9px;font-size:12px;font-weight:700;background:#f1f2f4;color:#6b7280}
+.filters button.on{background:#6366f1;color:#fff}
+main{padding:12px 16px}
+.count{font-size:11px;color:#9ca3af;text-align:right;margin-bottom:10px}
+.card{perspective:900px;margin-bottom:0}
+.inner{position:relative;min-height:158px;transition:transform .45s;transform-style:preserve-3d}
+.card.flip .inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.front{background:#fff}
+.back{background:#eef2ff;transform:rotateY(180deg)}
+.tag{font-size:10px;font-weight:700;letter-spacing:.15em;color:#818cf8}
+.en{font-size:18px;font-weight:700;margin-top:5px;line-height:1.35}
+.ja{font-size:15px;font-weight:700;margin-top:5px;line-height:1.5;color:#3730a3}
+.ctx{font-size:11px;font-style:italic;color:#c7cad1;line-height:1.5;margin-top:8px}
+.back .ctx{color:#a5b4fc}
+.hint{font-size:10px;color:#d1d5db;text-align:center;margin-top:6px}
+.acts{display:flex;gap:8px;margin:9px 0 16px}
+.acts button{flex:1;padding:10px 0;border-radius:9px;font-size:13px;font-weight:700;border:1px solid}
+.ok{background:#ecfdf5;color:#059669;border-color:#a7f3d0}
+.ok.on{background:#10b981;color:#fff;border-color:#10b981}
+.yet{background:#fffbeb;color:#d97706;border-color:#fde68a}
+.yet.on{background:#fbbf24;color:#fff;border-color:#fbbf24}
+.pager{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.pager button{padding:10px 22px;border:0;border-radius:9px;font-size:13px;font-weight:700;background:#e0e7ff;color:#4f46e5}
+.pager button:disabled{background:#f1f2f4;color:#d1d5db}
+.pager span{font-size:11px;color:#9ca3af}
+.empty{text-align:center;color:#9ca3af;margin-top:60px;font-size:13px}
+.reset{display:block;margin:26px auto 0;font-size:11px;color:#c1c4cb;background:none;border:0;text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <h1>📋 業務英語フレーズ帳</h1>
+  <div class="meta"><span id="total"></span><span id="score"></span></div>
+  <div class="bar"><div id="prog"></div></div>
+  <div class="filters">
+    <button data-f="all" class="on">すべて</button>
+    <button data-f="yet">まだ</button>
+    <button data-f="ok">覚えた</button>
+  </div>
+</header>
+<main id="app"></main>
+
+<script>
+const WORDS = [
+{e:"schedule a call",j:"通話を予定する / 電話会議の時間を設定する",c:"It would be great to schedule a call with you at the beginning of next week."},
+{e:"go through the estimate together",j:"見積もりを一緒に確認する",c:"...to go through the estimate together."},
+{e:"fully available",j:"いつでも対応可能です",c:"I'm of course fully available."},
+{e:"Please bear with me.",j:"少々お待ちください",c:"Please bear with me. I'll get in touch with our local producers."},
+{e:"transmission team",j:"伝送チーム",c:"...a car with a driver for our transmission team (2 people)."},
+{e:"pool footage",j:"プール素材（代表取材の映像素材）",c:"...equipment used to send pool footage back to Japan."},
+{e:"outside the scope of your services",j:"サービスの範囲外",c:"If this request is outside the scope of your services, please let me know."},
+{e:"late-night surcharge",j:"深夜割増料金",c:"Please include any late-night surcharge in the quote."},
+{e:"bonded cellular transmission units",j:"モバイル回線束ね込み伝送装置",c:"...two LiveU bonded cellular transmission units for live transmission."},
+{e:"prepaid data SIM cards",j:"プリペイド式データSIMカード",c:"...purchasing prepaid data SIM cards."},
+{e:"in a single visit",j:"1回の来店で",c:"...in a single visit to a BASE Shop?"},
+{e:"data bundle",j:"データパック",c:"What is the largest data bundle currently available?"},
+{e:"activated on the same day of purchase",j:"購入当日に開通手続きされる",c:"Can the SIM cards be activated on the same day of purchase?"},
+{e:"processing time",j:"処理時間 / 待ち時間",c:"...should we expect any processing time?"},
+{e:"non-resident foreign broadcast crews",j:"非居住者の海外放送取材団",c:"...available to non-resident foreign broadcast crews?"},
+{e:"prompt reply",j:"迅速な返信",c:"Thank you for your prompt reply."},
+{e:"swift response",j:"素早い返答",c:"Thank you very much for your swift response."},
+{e:"continued support",j:"継続的なサポート",c:"Thank you very much for your continued support."},
+{e:"kind assistance",j:"親切なご対応",c:"Thank you very much for your time and assistance."},
+{e:"look forward to hearing from you",j:"ご返信をお待ちしております",c:"We look forward to hearing from you."},
+{e:"please feel free to contact us",j:"お気軽にご連絡ください",c:"Please feel free to contact us if you have any questions."},
+{e:"don't hesitate to let us know",j:"遠慮なくお知らせください",c:"Please don't hesitate to let us know the precise dates."},
+{e:"at your earliest convenience",j:"ご都合のよい最も早いタイミングで",c:"We would be grateful for your reply at your earliest convenience."},
+{e:"get back to you",j:"折り返し連絡する",c:"We will get back to you once a decision has been made."},
+{e:"finalizing our schedule",j:"スケジュールを最終調整中",c:"We are still finalizing our schedule."},
+{e:"quotation",j:"正式見積書",c:"Once we receive the quotation, we will review it internally."},
+{e:"estimate",j:"概算見積り",c:"Please include it in the estimate."},
+{e:"budget",j:"予算",c:"I will put together a budget and share it with you."},
+{e:"daily rate",j:"1日あたりの料金",c:"What is your daily rate for a 10-hour day package?"},
+{e:"overtime rate",j:"時間超過料金",c:"What is the overtime rate per hour?"},
+{e:"airport transfer",j:"空港送迎",c:"We would like to secure the airport transfer first."},
+{e:"luxury transfer",j:"高級送迎サービス",c:"If you would prefer a luxury transfer..."},
+{e:"private Wi-Fi network",j:"専用Wi-Fiネットワーク",c:"We are interested in setting up a private Wi-Fi network."},
+{e:"public guest network",j:"一般ゲスト用ネットワーク",c:"...another password than the public guest network."},
+{e:"download speed",j:"ダウンロード速度",c:"The download speed would be 100mbps."},
+{e:"cancellation policy",j:"キャンセル規定",c:"Could you please let us know the cancellation policy?"},
+{e:"LAN cable",j:"LANケーブル",c:"Are LAN cables available in our room?"},
+{e:"TVU unit",j:"TVU伝送機",c:"We will bring two TVU units."},
+{e:"SIM card slot",j:"SIMカードスロット",c:"Each unit has six SIM card slots."},
+{e:"data capacity",j:"データ容量",c:"Approximately 60GB per TVU unit should be sufficient."},
+{e:"video encoder",j:"映像エンコーダー",c:"two TVU video encoders"},
+{e:"live transmission",j:"生伝送・生中継",c:"up to 2 hours of live transmission per day"},
+{e:"activate SIM cards",j:"SIMカードを開通する",c:"could you help purchase and activate local data SIM cards?"},
+{e:"carrier",j:"通信キャリア",c:"SIM cards from several different carriers"},
+{e:"data-only plan",j:"データ通信専用プラン",c:"is there any data-only option suitable for broadcast use?"},
+{e:"unlimited option",j:"無制限プラン",c:"or unlimited option suitable for broadcast use?"},
+{e:"foreign passport",j:"外国籍パスポート",c:"using foreign passports"},
+{e:"flagship store",j:"旗艦店",c:"Could you recommend a flagship BASE Shop?"},
+{e:"short-term subscription plan",j:"短期契約プラン",c:"would a short-term monthly subscription plan be available?"},
+{e:"creative brief",j:"企画概要書",c:"Would you be able to share the creative brief?"},
+{e:"fixer",j:"現地コーディネーター",c:"Would the driver also be expected to support as a fixer?"},
+{e:"production assistant",j:"制作アシスタント",c:"fixer / production assistant"},
+{e:"day trip",j:"日帰り移動",c:"with the possibility of some day trips within Belgium"},
+{e:"transmission equipment",j:"伝送機材",c:"several pieces of transmission equipment"},
+{e:"local producer",j:"現地プロデューサー",c:"I'm waiting for the quote from our local producer."},
+{e:"e-meet you",j:"オンラインで初めまして",c:"It's lovely to e-meet you!"},
+{e:"over-subscribed",j:"応募超過の",c:"we are significantly over-subscribed once again"},
+{e:"application has been unsuccessful",j:"申請は通りませんでした",c:"your application has been unsuccessful"},
+{e:"business center",j:"ビジネスセンター",c:"in our guest room or another area such as the business center"},
+{e:"meeting room",j:"会議室",c:"We have LAN cabled internet in our meeting rooms."}
+];
+WORDS.forEach((w,i)=>w.id=i+1);
+
+const KEY = "phrasebook-v1";
+const PAGE = 10;
+let status = {};
+try { status = JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { status = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(status)); } catch(e){} };
+
+let filter = "all", page = 0;
+
+const esc = s => s.replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+
+function list(){
+  return WORDS.filter(w =>
+    filter === "ok"  ? status[w.id] === "ok"  :
+    filter === "yet" ? status[w.id] !== "ok"  : true);
+}
+
+function render(){
+  const done = Object.values(status).filter(s => s === "ok").length;
+  const pct  = Math.round(done / WORDS.length * 100);
+  document.getElementById("total").textContent = WORDS.length + "フレーズ";
+  document.getElementById("score").textContent = "覚えた " + done + "/" + WORDS.length + "（" + pct + "%）";
+  document.getElementById("prog").style.width = pct + "%";
+
+  const items = list();
+  const pages = Math.max(1, Math.ceil(items.length / PAGE));
+  if (page > pages - 1) page = pages - 1;
+  const view = items.slice(page * PAGE, page * PAGE + PAGE);
+  const app = document.getElementById("app");
+
+  if (!items.length){
+    app.innerHTML = '<div class="empty">🎉<br><br>カードはありません</div>';
+    return;
+  }
+
+  app.innerHTML =
+    '<p class="count">' + (page*PAGE+1) + '〜' + Math.min((page+1)*PAGE, items.length) + ' / ' + items.length + '件</p>' +
+    view.map(w =>
+      '<div class="card" data-id="' + w.id + '"><div class="inner">' +
+        '<div class="face front"><div><span class="tag">EN</span>' +
+          '<p class="en">' + esc(w.e) + '</p><p class="ctx">' + esc(w.c) + '</p></div>' +
+          '<p class="hint">タップで意味を見る</p></div>' +
+        '<div class="face back"><div><span class="tag">JA</span>' +
+          '<p class="ja">' + esc(w.j) + '</p><p class="ctx">' + esc(w.c) + '</p></div>' +
+          '<p class="hint">タップで戻る</p></div>' +
+      '</div></div>' +
+      '<div class="acts">' +
+        '<button class="ok' + (status[w.id]==="ok"?" on":"") + '" data-set="ok" data-id="' + w.id + '">✓ 覚えた</button>' +
+        '<button class="yet' + (status[w.id]==="yet"?" on":"") + '" data-set="yet" data-id="' + w.id + '">△ まだ</button>' +
+      '</div>'
+    ).join("") +
+    (pages > 1 ?
+      '<div class="pager">' +
+        '<button id="prev"' + (page===0?" disabled":"") + '>← 前へ</button>' +
+        '<span>' + (page+1) + ' / ' + pages + '</span>' +
+        '<button id="next"' + (page===pages-1?" disabled":"") + '>次へ →</button>' +
+      '</div>' : "") +
+    '<button class="reset" id="reset">学習記録をリセット</button>';
+}
+
+document.addEventListener("click", e => {
+  const card = e.target.closest(".card");
+  if (card){ card.classList.toggle("flip"); return; }
+
+  const act = e.target.closest("[data-set]");
+  if (act){
+    status[act.dataset.id] = act.dataset.set;
+    save(); render();
+    window.scrollTo({top: window.scrollY});
+    return;
+  }
+
+  const f = e.target.closest("[data-f]");
+  if (f){
+    filter = f.dataset.f; page = 0;
+    document.querySelectorAll("[data-f]").forEach(b => b.classList.toggle("on", b === f));
+    render(); window.scrollTo(0,0);
+    return;
+  }
+
+  if (e.target.id === "prev"){ page--; render(); window.scrollTo(0,0); }
+  if (e.target.id === "next"){ page++; render(); window.scrollTo(0,0); }
+  if (e.target.id === "reset" && confirm("学習記録をすべて消します。よろしいですか？")){
+    status = {}; save(); render();
+  }
+});
+
+render();
+</script>
+</body>
+</html>
